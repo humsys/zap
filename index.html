@@ -1,0 +1,48 @@
+<script src="zap.js"></script>
+<script src="scenes.js"></script>
+<script src="https://cdn.firebase.com/js/client/2.4.1/firebase.js"></script>
+<script>
+
+
+if (!localStorage.playerId) localStorage.playerId = "Player" + Date.now()
+var fb = new Firebase('https://lifestyles.firebaseio.com/quick/zapDemo/players')
+
+// TODO: better way to track in room vs out of room
+fb.child(localStorage.playerId).onDisconnect().remove()
+
+
+zap({
+  playerId: localStorage.playerId,
+  scenes: window.scenes,
+
+  storage: {
+    // three database functions
+    onPlayersChanged(cb){ fb.on('value', snap => cb(snap.val() || {})) },
+    updatePlayerTask(id, changed){ fb.child(id).child('task').update(changed) },
+    updateDirtyPlayers(players){
+      var records = {}
+      Object.values(players).forEach(p => {
+        if (p.DIRTY){ delete p.DIRTY; records[p.id] = p }
+      })
+      fb.update(records)
+    }
+  },
+
+  localTaskManagers: {
+    // called asynchronously, using setTimeout(_, 0)
+
+    tell(t, whenDone){
+      // BUG: will not timeout if page crashes / user turns off phone
+      alert(t.text)
+      if (!t.timeout) return whenDone({ is: 'done' })
+      setTimeout(() => {whenDone({ is: 'done' })}, t.timeout)
+    },
+
+    ask(t, whenDone){
+      whenDone({ is: 'done', answered: prompt(t.text) })
+    }
+  }
+})
+
+
+</script>
